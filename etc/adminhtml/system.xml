@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright 2016 Shockwave-Design - J. & M. Kramer, all rights reserved.
+ * See LICENSE.txt for license details.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../Config/etc/system_file.xsd">
+    <system>
+        <section id="system">
+            <group id="smtp">
+                <field id="dropbox_key" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Dropbox key</label>
+                    <comment><![CDATA[key-...]]></comment>
+                    <depends>
+                        <field id="storeage">dropbox</field>
+                    </depends>
+                </field>
+
+                <field id="dropbox_secret" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Dropbox secret</label>
+                    <comment><![CDATA[key-...]]></comment>
+                    <depends>
+                        <field id="storeage">dropbox</field>
+                    </depends>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>
+

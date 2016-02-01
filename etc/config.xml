@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright 2016 Shockwave-Design - J. & M. Kramer, all rights reserved.
+ * See LICENSE.txt for license details.
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../Store/etc/config.xsd">
+    <default>
+        <system>
+            <storeage>
+                <type>dropbox</type>
+            </storeage>
+        </system>
+        <transport>
+            <storeages>
+                <dropbox>
+                    <lable>Dropbox</lable>
+                    <value>dropbox</value>
+                    <class>Shockwavedesign\Mail\Dropbox\Model\Storeages\DropboxStoreage</class>
+                </mailgun>
+            </storeages>
+        </transport>
+    </default>
+</config>
