@@ -6,6 +6,6 @@
 
 \Magento\Framework\Component\ComponentRegistrar::register(
     \Magento\Framework\Component\ComponentRegistrar::MODULE,
-    'Shockwavedesign_Mail_Mailgun',
+    'Shockwavedesign_Mail_Dropbox',
     __DIR__
 );
