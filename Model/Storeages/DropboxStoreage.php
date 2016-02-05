@@ -5,6 +5,8 @@
  */
 namespace Shockwavedesign\Mail\Dropbox\Model\Storeages;
 
+use \Dropbox as dbx;
+
 class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\StoreageInterface
 {
     /**
@@ -26,13 +28,18 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     )
     {
 
+        $appInfo = dbx\AppInfo::loadFromJsonFile("INSERT_PATH_TO_JSON_CONFIG_PATH");
+        $webAuth = new dbx\WebAuthNoRedirect($appInfo, "PHP-Example/1.0");
+        $authorizeUrl = $webAuth->start();
+
+        $dbxClient = new dbx\Client($accessToken, "PHP-Example/1.0");
+        $accountInfo = $dbxClient->getAccountInfo();
+        print_r($accountInfo);
     }
 
     /**
      * Send a mail using this transport
      *
-     * @return $id
-     * @throws \Magento\Framework\Exception\MailException
      */
     public function saveMessage()
     {
@@ -48,5 +55,39 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     public function loadMessage($id)
     {
         // TODO
+    }
+
+    /**
+     * TODO
+     *
+     * @param $id
+     * @param $filePath
+     * @return \Shockwavemk\Mail\Base\Model\Storeages\StoreageInterface
+     */
+    public function addAttachment($id, $filePath)
+    {
+        // TODO: Implement addAttachment() method.
+    }
+
+    /**
+     * TODO
+     *
+     * @return array
+     */
+    public function getAttachments($id)
+    {
+        // TODO: Implement getAttachments() method.
+    }
+
+    /**
+     * Load binary data from storeage provider
+     *
+     * @param $id
+     * @return string
+     */
+    public function loadAttachment($id)
+    {
+        $binaryString = "TODO_FILE_CONTENT"; // TODO
+        return $binaryString;
     }
 }
