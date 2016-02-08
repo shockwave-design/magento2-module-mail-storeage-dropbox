@@ -63,7 +63,7 @@ class Index extends \Magento\Framework\App\Action\Action
     public function __construct(
         Context $context,
         PageFactory $resultPageFactory,
-        Config $config,
+        \Shockwavemk\Mail\Base\Model\Simulation\Config $config,
         StoreManagerInterface $storeManager,
         TransportBuilder $transportBuilder,
         Customer $customer,
@@ -89,41 +89,47 @@ class Index extends \Magento\Framework\App\Action\Action
     {
         echo "dropbox test";
 
+        $key = $this->config->getValue('system/smtp/dropbox_key', ScopeInterface::SCOPE_STORE);
+        $secret = $this->config->getValue('system/smtp/dropbox_secret', ScopeInterface::SCOPE_STORE);
+        $accessToken = $this->config->getValue('system/smtp/dropbox_user_id', ScopeInterface::SCOPE_STORE); // TODO
+        $path = $this->config->getValue('system/smtp/dropbox_host_temp_folder_path', ScopeInterface::SCOPE_STORE);
 
         $appInfo = dbx\AppInfo::loadFromJson(
             array(
-                'key' => 'todo',
-                'secret' => 'todo'
+                'key' => $key,
+                'secret' => $secret
             )
         );
-        $webAuth = new dbx\WebAuthNoRedirect($appInfo, "PHP-Example/1.0");
+        //$webAuth = new dbx\WebAuthNoRedirect($appInfo, "PHP-Example/1.0");
 
-        $authorizeUrl = $webAuth->start();
+        //$authorizeUrl = $webAuth->start();
 
-        echo "1. Go to: " . $authorizeUrl . "\n";
-        echo "2. Click \"Allow\" (you might have to log in first).\n";
-        echo "3. Copy the authorization code.\n";
+        //echo "1. Go to: " . $authorizeUrl . "\n";
+        //echo "2. Click \"Allow\" (you might have to log in first).\n";
+        //echo "3. Copy the authorization code.\n";
 
-        $authCode = "todo";
+        //$authCode = "WDUOKE3OsNIAAAAAAAATNEuROlA8b_uXFy0zJ6Rb_XM";
 
-        list($accessToken, $dropboxUserId) = $webAuth->finish($authCode);
-        print "DropboxUserId: " . $dropboxUserId . "Access Token: " . $accessToken . "\n";
+        //list($accessToken, $dropboxUserId) = $webAuth->finish($authCode);
+        //print "DropboxUserId: " . $dropboxUserId . "Access Token: " . $accessToken . "\n";
 
         $dbxClient = new dbx\Client($accessToken, "PHP-Example/1.0");
         $accountInfo = $dbxClient->getAccountInfo();
 
         print_r($accountInfo);
 
-        $f = fopen("working-draft.txt", "rb");
-        $result = $dbxClient->uploadFile("/working-draft.txt", dbx\WriteMode::add(), $f);
+        /*
+        $f = fopen($path . "test.txt", "rb");
+        $result = $dbxClient->uploadFile("/test.txt", dbx\WriteMode::add(), $f);
         fclose($f);
         print_r($result);
+        */
 
         $folderMetadata = $dbxClient->getMetadataWithChildren("/");
         print_r($folderMetadata);
 
-        $f = fopen("working-draft.txt", "w+b");
-        $fileMetadata = $dbxClient->getFile("/working-draft.txt", $f);
+        $f = fopen($path . "test.txt", "w+b");
+        $fileMetadata = $dbxClient->getFile("/test.txt", $f);
         fclose($f);
         print_r($fileMetadata);
     }

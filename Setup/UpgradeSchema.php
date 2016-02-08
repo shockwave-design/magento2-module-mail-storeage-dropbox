@@ -38,6 +38,12 @@ class UpgradeSchema implements UpgradeSchemaInterface
             ['nullable' => false],
             'Dropbox User Id'
         )->addColumn(
+            'display_name',
+            \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
+            255,
+            ['nullable' => false],
+            'Display Name'
+        )->addColumn(
             'access_token',
             \Magento\Framework\DB\Ddl\Table::TYPE_TEXT,
             255,
