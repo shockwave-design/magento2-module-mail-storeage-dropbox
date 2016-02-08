@@ -11,6 +11,9 @@
             <storeage>
                 <type>dropbox</type>
             </storeage>
+            <smtp>
+                <dropbox_host_temp_folder_path>/var/www/html/var/dropbox</dropbox_host_temp_folder_path>
+            </smtp>
         </system>
         <transport>
             <storeages>
@@ -18,7 +21,7 @@
                     <lable>Dropbox</lable>
                     <value>dropbox</value>
                     <class>Shockwavedesign\Mail\Dropbox\Model\Storeages\DropboxStoreage</class>
-                </mailgun>
+                </dropbox>
             </storeages>
         </transport>
     </default>

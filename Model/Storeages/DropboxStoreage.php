@@ -88,6 +88,13 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     public function loadAttachment($id)
     {
         $binaryString = "TODO_FILE_CONTENT"; // TODO
+
+
+        $f = fopen("working-draft.txt", "w+b");
+        $fileMetadata = $dbxClient->getFile("/working-draft.txt", $f);
+        fclose($f);
+        print_r($fileMetadata);
+
         return $binaryString;
     }
 }

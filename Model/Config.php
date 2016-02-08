@@ -3,22 +3,20 @@
  * Copyright 2016 Shockwave-Design - J. & M. Kramer, all rights reserved.
  * See LICENSE.txt for license details.
  */
-namespace Shockwavedesign\Mail\Mailgun\Model;
+namespace Shockwavedesign\Mail\Dropbox\Model;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
 
 /**
- * Mailgun config
+ * Dropbox config
  */
 class Config
 {
-    const XML_PATH_USERNAME = 'system/smtp/username';
+    const XML_PATH_DROPBOX_USER = 'system/smtp/dropbox_user';
 
-    const XML_PATH_PASSWORD = 'system/smtp/password';
+    const XML_PATH_DROPBOX_KEY = 'system/smtp/dropbox_key';
 
-    const XML_PATH_MAILGUN_KEY = 'system/smtp/mailgun_key';
-
-    const XML_PATH_MAILGUN_DOMAIN = 'system/smtp/mailgun_domain';
+    const XML_PATH_DROPBOX_SECRET = 'system/smtp/dropbox_secret';
 
     /**
      * Core store config
@@ -40,13 +38,27 @@ class Config
         $this->encryptor = $encryptor;
     }
 
-    public function getMailgunKey()
+    public function getDropboxKey()
     {
-        return $this->scopeConfig->getValue(self::XML_PATH_MAILGUN_KEY);
+        return $this->scopeConfig->getValue(self::XML_PATH_DROPBOX_KEY);
     }
 
-    public  function getMailgunDomain()
+    public  function getDropboxSecret()
     {
-        return $this->scopeConfig->getValue(self::XML_PATH_MAILGUN_DOMAIN);
+        return $this->scopeConfig->getValue(self::XML_PATH_DROPBOX_SECRET);
+    }
+
+    // Dropbox user
+
+    public function getDropboxUser()
+    {
+        return $this->scopeConfig->getValue(self::XML_PATH_DROPBOX_USER);
+    }
+
+    public function getDropboxUsers()
+    {
+        return array(
+            'display_name' => 'entity_id'
+        );
     }
 }

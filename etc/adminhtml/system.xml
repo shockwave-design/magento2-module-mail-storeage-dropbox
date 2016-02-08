@@ -11,7 +11,7 @@
             <group id="smtp">
                 <field id="dropbox_key" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Dropbox key</label>
-                    <comment><![CDATA[key-...]]></comment>
+                    <comment><![CDATA[TODO]]></comment>
                     <depends>
                         <field id="storeage">dropbox</field>
                     </depends>
@@ -19,7 +19,23 @@
 
                 <field id="dropbox_secret" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Dropbox secret</label>
-                    <comment><![CDATA[key-...]]></comment>
+                    <comment><![CDATA[TODO]]></comment>
+                    <depends>
+                        <field id="storeage">dropbox</field>
+                    </depends>
+                </field>
+
+                <field id="dropbox_user_id" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Dropbox User</label>
+                    <comment><![CDATA[TODO]]></comment>
+                    <depends>
+                        <field id="storeage">dropbox</field>
+                    </depends>
+                </field>
+
+                <field id="dropbox_host_temp_folder_path" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Dropbox Temp Host Folder Path</label>
+                    <comment><![CDATA[/var/www/sites/html/var/dropbox]]></comment>
                     <depends>
                         <field id="storeage">dropbox</field>
                     </depends>
