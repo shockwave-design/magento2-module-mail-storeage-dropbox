@@ -44,6 +44,23 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     public function saveMessage()
     {
         // TODO
+        $ser = serialize($this->_message);
+        $fileName = $this->_path.'/'.$this->getRandomString(10);
+        for ($i = 0; $i < $this->_retryLimit; ++$i) {
+            /* We try an exclusive creation of the file. This is an atomic operation, it avoid locking mechanism */
+            $fp = @fopen($fileName.'.message', 'x');
+            if (false !== $fp) {
+                if (false === fwrite($fp, $ser)) {
+                    return false;
+                }
+                return fclose($fp);
+            } else {
+                /* The file already exists, we try a longer fileName */
+                $fileName .= $this->getRandomString(1);
+            }
+        }
+
+        throw new Exception('Unable to create a file for enqueuing Message');
     }
 
     /**

@@ -18,7 +18,7 @@
         <transport>
             <storeages>
                 <dropbox>
-                    <lable>Dropbox</lable>
+                    <label>Dropbox</label>
                     <value>dropbox</value>
                     <class>Shockwavedesign\Mail\Dropbox\Model\Storeages\DropboxStoreage</class>
                 </dropbox>

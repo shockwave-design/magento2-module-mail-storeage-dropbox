@@ -89,9 +89,14 @@ class Index extends \Magento\Framework\App\Action\Action
     {
         echo "dropbox test";
 
+        /** @var \Shockwavedesign\Mail\Dropbox\Model\Dropbox\User $dropboxUser */
+        $dropboxUser = $this->scopeConfig->getDropboxUser();
+
         $key = $this->config->getValue('system/smtp/dropbox_key', ScopeInterface::SCOPE_STORE);
         $secret = $this->config->getValue('system/smtp/dropbox_secret', ScopeInterface::SCOPE_STORE);
-        $accessToken = $this->config->getValue('system/smtp/dropbox_user_id', ScopeInterface::SCOPE_STORE); // TODO
+
+        $accessToken = $dropboxUser->getAccessToken();
+
         $path = $this->config->getValue('system/smtp/dropbox_host_temp_folder_path', ScopeInterface::SCOPE_STORE);
 
         $appInfo = dbx\AppInfo::loadFromJson(

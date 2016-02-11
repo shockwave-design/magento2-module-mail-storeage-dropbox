@@ -5,8 +5,6 @@
  */
 namespace Shockwavedesign\Mail\Dropbox\Model\Config\Source;
 
-use Shockwavemk\Mail\Base\Model\Config;
-
 class User implements \Magento\Framework\Option\ArrayInterface
 {
     protected $config;
@@ -26,14 +24,14 @@ class User implements \Magento\Framework\Option\ArrayInterface
         if(empty($this->config->getDropboxUsers()))
         {
             return [
-                ['label' => __('Disabled'), 'value' => 'disabled']
+                ['label' => __('No user saved'), 'value' => '0']
             ];
         }
 
         $selection = array();
-        foreach ($this->config->getDropboxUsers() as $transportType)
+        foreach ($this->config->getDropboxUsers() as $dropboxUser)
         {
-            $selection[] = ['label' => __($transportType['label']), 'value' => $transportType['value']];
+            $selection[] = ['label' => __($dropboxUser['display_name']), 'value' => $dropboxUser['entity_id']];
         }
 
         return $selection;

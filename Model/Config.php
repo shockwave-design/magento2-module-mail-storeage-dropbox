@@ -12,7 +12,7 @@ use Magento\Framework\App\Config\ScopeConfigInterface;
  */
 class Config
 {
-    const XML_PATH_DROPBOX_USER = 'system/smtp/dropbox_user';
+    const XML_PATH_DROPBOX_USER = 'system/smtp/dropbox_user_id';
 
     const XML_PATH_DROPBOX_KEY = 'system/smtp/dropbox_key';
 
@@ -25,17 +25,20 @@ class Config
      */
     protected $scopeConfig;
     protected $encryptor;
+    protected $user;
 
     /**
      * @param ScopeConfigInterface $scopeConfig
      */
     public function __construct(
         ScopeConfigInterface $scopeConfig,
-        \Magento\Framework\Encryption\EncryptorInterface $encryptor
+        \Magento\Framework\Encryption\EncryptorInterface $encryptor,
+        \Shockwavedesign\Mail\Dropbox\Model\Dropbox\User $user
     )
     {
         $this->scopeConfig = $scopeConfig;
         $this->encryptor = $encryptor;
+        $this->user = $user;
     }
 
     public function getDropboxKey()
@@ -52,13 +55,13 @@ class Config
 
     public function getDropboxUser()
     {
-        return $this->scopeConfig->getValue(self::XML_PATH_DROPBOX_USER);
+        $dropboxUserId = $this->scopeConfig->getValue(self::XML_PATH_DROPBOX_USER);
+        return $this->user->load($dropboxUserId);
     }
 
     public function getDropboxUsers()
     {
-        return array(
-            'display_name' => 'entity_id'
-        );
+        $userCollection = $this->user->getCollection();
+        return $userCollection->getData();
     }
 }

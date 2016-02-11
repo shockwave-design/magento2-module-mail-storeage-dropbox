@@ -14,6 +14,6 @@ class Collection extends \Magento\Framework\Model\ResourceModel\Db\Collection\Ab
      */
     protected function _construct()
     {
-        $this->_init('Shockwavedesign\Mail\Dropbox\Model\User', 'Shockwavedesign\Mail\Dropbox\Model\ResourceModel\Dropbox\User');
+        $this->_init('Shockwavedesign\Mail\Dropbox\Model\Dropbox\User', 'Shockwavedesign\Mail\Dropbox\Model\ResourceModel\Dropbox\User');
     }
 }
