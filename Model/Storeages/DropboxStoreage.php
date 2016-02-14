@@ -9,58 +9,76 @@ use \Dropbox as dbx;
 
 class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\StoreageInterface
 {
+    const MESSAGE_FILE_NAME = 'message.html';
+
+    const MAIL_FILE_NAME = 'mail.json';
+
     /**
      * @var \Shockwavemk\Mail\Base\Model\Storeages\StoreageInterface
      */
     protected $_storage;
 
     /**
+     * @var \Shockwavemk\Mail\Base\Model\Config $_config
+     */
+    protected $_config;
+
+    /**
+     * @var \Shockwavedesign\Mail\Dropbox\Model\Config $_dropboxStorageConfig
+     */
+    protected $_dropboxStorageConfig;
+
+    protected $_retryLimit;
+
+    /**
      * @param \Shockwavemk\Mail\Base\Model\Config $config
-     * @param \Magento\Framework\Mail\MessageInterface $message
      * @param \Magento\Framework\ObjectManagerInterface $manager
      * @throws \Magento\Framework\Exception\MailException
      * @internal param null $parameters
      */
     public function __construct(
         \Shockwavemk\Mail\Base\Model\Config $config,
+        \Shockwavedesign\Mail\Dropbox\Model\Config $dropboxStoreageConfig,
         \Magento\Framework\Mail\MessageInterface $message,
         \Magento\Framework\ObjectManagerInterface $manager
     )
     {
-
-        $appInfo = dbx\AppInfo::loadFromJsonFile("INSERT_PATH_TO_JSON_CONFIG_PATH");
-        $webAuth = new dbx\WebAuthNoRedirect($appInfo, "PHP-Example/1.0");
-        $authorizeUrl = $webAuth->start();
-
-        $dbxClient = new dbx\Client($accessToken, "PHP-Example/1.0");
-        $accountInfo = $dbxClient->getAccountInfo();
-        print_r($accountInfo);
+        $this->_config = $config;
+        $this->_retryLimit = 10; // TODO
+        $this->_dropboxStorageConfig = $dropboxStoreageConfig;
     }
 
     /**
      * Send a mail using this transport
-     *
+     * @param \Magento\Framework\Mail\MessageInterface $message
+     * @param int $id
+     * @throws \Exception
      */
-    public function saveMessage()
+    public function saveMessage($message, $id)
     {
-        // TODO
-        $ser = serialize($this->_message);
-        $fileName = $this->_path.'/'.$this->getRandomString(10);
-        for ($i = 0; $i < $this->_retryLimit; ++$i) {
-            /* We try an exclusive creation of the file. This is an atomic operation, it avoid locking mechanism */
-            $fp = @fopen($fileName.'.message', 'x');
-            if (false !== $fp) {
-                if (false === fwrite($fp, $ser)) {
-                    return false;
-                }
-                return fclose($fp);
-            } else {
-                /* The file already exists, we try a longer fileName */
-                $fileName .= $this->getRandomString(1);
-            }
+        // first save file to spool path
+        // to avoid exceptions on external storeage provider connection
+
+        // convert message to html
+
+        /** @var \Shockwavemk\Mail\Base\Model\Mail\Message $message */
+        $messageHtml = quoted_printable_decode($message->getBodyHtml(true));
+
+        // store message in temporary file system spooler
+        $dropboxHostTempFolderPath = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
+
+        $folderPath = $dropboxHostTempFolderPath . DIRECTORY_SEPARATOR . $id . DIRECTORY_SEPARATOR;
+        $fileName = self::MESSAGE_FILE_NAME;
+        $filePath = $folderPath . DIRECTORY_SEPARATOR . $fileName;
+
+        // create a folder for message if needed
+        if(!is_dir($folderPath))
+        {
+            $this->createFolder($folderPath);
         }
 
-        throw new Exception('Unable to create a file for enqueuing Message');
+        // try to store message to filesystem
+        $this->storeFile($messageHtml, $filePath);
     }
 
     /**
@@ -113,5 +131,89 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         print_r($fileMetadata);
 
         return $binaryString;
+    }
+
+    /**
+     * TODO
+     *
+     * @param \Shockwavemk\Mail\Base\Model\Mail $mail
+     * @param int $id
+     * @return  $id
+     */
+    public function saveMail($mail, $id)
+    {
+        // first save file to spool path
+        // to avoid exceptions on external storeage provider connection
+
+        // convert message to json
+        $mailJson = json_encode($mail);
+
+        // store message in temporary file system spooler
+        $dropboxHostTempFolderPath = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
+
+        $folderPath = $dropboxHostTempFolderPath . DIRECTORY_SEPARATOR . $id . DIRECTORY_SEPARATOR;
+        $fileName = self::MAIL_FILE_NAME;
+        $filePath = $folderPath . DIRECTORY_SEPARATOR . $fileName;
+
+        // create a folder for message if needed
+        if(!is_dir($folderPath))
+        {
+            $this->createFolder($folderPath);
+        }
+
+        // try to store message to filesystem
+        $this->storeFile($mailJson, $filePath);
+    }
+
+    /**
+     * TODO
+     *
+     * @param $id
+     * @return \Shockwavemk\Mail\Base\Model\Mail
+     */
+    public function loadMail($id)
+    {
+        // TODO: Implement loadMail() method.
+    }
+
+    /**
+     * TODO
+     *
+     * @return array
+     */
+    public function loadAttachments($id)
+    {
+        // TODO: Implement loadAttachments() method.
+        return array();
+    }
+
+    /**
+     * TODO
+     *
+     * @return $id
+     */
+    public function saveAttachments($attachments, $id)
+    {
+        // TODO: Implement saveAttachments() method.
+    }
+
+    private function storeFile($json, $filePath)
+    {
+        for ($i = 0; $i < $this->_retryLimit; ++$i) {
+            /* We try an exclusive creation of the file. This is an atomic operation, it avoid locking mechanism */
+            $fp = @fopen($filePath, 'x');
+
+            if (false === fwrite($fp, $json)) {
+                return false;
+            }
+            return fclose($fp);
+        }
+
+        throw new \Exception('Unable to create a file for enqueuing Message');
+    }
+
+    private function createFolder($folderPath)
+    {
+        return mkdir($folderPath, 0777, true);
     }
 }

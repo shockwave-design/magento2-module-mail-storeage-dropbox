@@ -18,6 +18,8 @@ class Config
 
     const XML_PATH_DROPBOX_SECRET = 'system/smtp/dropbox_secret';
 
+    const XML_PATH_DROPBOX_HOST_TEMP_FOLDER_PATH = 'system/smtp/dropbox_host_temp_folder_path';
+
     /**
      * Core store config
      *
@@ -63,5 +65,11 @@ class Config
     {
         $userCollection = $this->user->getCollection();
         return $userCollection->getData();
+    }
+
+    // Spool path
+    public function getDropboxHostTempFolderPath()
+    {
+        return $this->scopeConfig->getValue(self::XML_PATH_DROPBOX_HOST_TEMP_FOLDER_PATH);
     }
 }
