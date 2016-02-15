@@ -67,7 +67,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         // store message in temporary file system spooler
         $dropboxHostTempFolderPath = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
 
-        $folderPath = $dropboxHostTempFolderPath . DIRECTORY_SEPARATOR . $id . DIRECTORY_SEPARATOR;
+        $folderPath = $dropboxHostTempFolderPath . DIRECTORY_SEPARATOR . $id;
         $fileName = self::MESSAGE_FILE_NAME;
         $filePath = $folderPath . DIRECTORY_SEPARATOR . $fileName;
 
@@ -151,7 +151,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         // store message in temporary file system spooler
         $dropboxHostTempFolderPath = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
 
-        $folderPath = $dropboxHostTempFolderPath . DIRECTORY_SEPARATOR . $id . DIRECTORY_SEPARATOR;
+        $folderPath = $dropboxHostTempFolderPath . DIRECTORY_SEPARATOR . $id;
         $fileName = self::MAIL_FILE_NAME;
         $filePath = $folderPath . DIRECTORY_SEPARATOR . $fileName;
 
