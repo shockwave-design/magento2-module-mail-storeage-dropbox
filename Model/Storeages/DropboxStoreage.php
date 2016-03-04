@@ -63,19 +63,8 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
 
         /** @var \Shockwavemk\Mail\Base\Model\Mail\Message $message */
         $messageHtml = quoted_printable_decode($message->getBodyHtml(true));
+        $filePath = $this->getFilePath($id);
 
-        // store message in temporary file system spooler
-        $dropboxHostTempFolderPath = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
-
-        $folderPath = $dropboxHostTempFolderPath . DIRECTORY_SEPARATOR . $id;
-        $fileName = self::MESSAGE_FILE_NAME;
-        $filePath = $folderPath . DIRECTORY_SEPARATOR . $fileName;
-
-        // create a folder for message if needed
-        if(!is_dir($folderPath))
-        {
-            $this->createFolder($folderPath);
-        }
 
         // try to store message to filesystem
         $this->storeFile($messageHtml, $filePath);
@@ -89,7 +78,8 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
      */
     public function loadMessage($id)
     {
-        // TODO
+        $filePath = $this->getFilePath($id);
+        return $this->restoreFile($filePath);
     }
 
     /**
@@ -197,13 +187,13 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         // TODO: Implement saveAttachments() method.
     }
 
-    private function storeFile($json, $filePath)
+    private function storeFile($data, $filePath)
     {
         for ($i = 0; $i < $this->_retryLimit; ++$i) {
             /* We try an exclusive creation of the file. This is an atomic operation, it avoid locking mechanism */
             $fp = @fopen($filePath, 'x');
 
-            if (false === fwrite($fp, $json)) {
+            if (false === fwrite($fp, $data)) {
                 return false;
             }
             return fclose($fp);
@@ -212,8 +202,44 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         throw new \Exception('Unable to create a file for enqueuing Message');
     }
 
+    private function restoreFile($filePath)
+    {
+        for ($i = 0; $i < $this->_retryLimit; ++$i) {
+            /* We try an exclusive creation of the file. This is an atomic operation, it avoid locking mechanism */
+            $fp = @fopen($filePath, 'x');
+
+            if (false === $fileData = file_get_contents ($filePath)) {
+                return false;
+            }
+            return $fileData;
+        }
+
+        throw new \Exception('Unable to load a file for Message');
+    }
+
     private function createFolder($folderPath)
     {
         return mkdir($folderPath, 0777, true);
+    }
+
+    /**
+     * @param $id
+     * @return string
+     */
+    public function getFilePath($id)
+    {
+        // store message in temporary file system spooler
+        $dropboxHostTempFolderPath = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
+
+        $folderPath = $dropboxHostTempFolderPath . $id;
+        $fileName = self::MESSAGE_FILE_NAME;
+        $filePath = $folderPath . DIRECTORY_SEPARATOR . $fileName;
+
+        // create a folder for message if needed
+        if (!is_dir($folderPath)) {
+            $this->createFolder($folderPath);
+            return $filePath;
+        }
+        return $filePath;
     }
 }
