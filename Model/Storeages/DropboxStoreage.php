@@ -9,9 +9,10 @@ use \Dropbox as dbx;
 
 class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\StoreageInterface
 {
-    const MESSAGE_FILE_NAME = 'message.html';
-
+    const MESSAGE_FILE_NAME = 'message.json';
+    const MESSAGE_HTML_FILE_NAME = 'message.html';
     const MAIL_FILE_NAME = 'mail.json';
+    const ATTACHMENT_PATH = 'attachments';
 
     /**
      * @var \Shockwavemk\Mail\Base\Model\Storeages\StoreageInterface
@@ -30,6 +31,8 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
 
     protected $_retryLimit;
 
+    protected $_manager;
+
     /**
      * @param \Shockwavemk\Mail\Base\Model\Config $config
      * @param \Magento\Framework\ObjectManagerInterface $manager
@@ -46,40 +49,93 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         $this->_config = $config;
         $this->_retryLimit = 10; // TODO
         $this->_dropboxStorageConfig = $dropboxStoreageConfig;
+        $this->_manager = $manager;
+    }
+
+    protected function getDropboxClient()
+    {
+        /** @var \Shockwavedesign\Mail\Dropbox\Model\Dropbox\User $dropboxUser */
+        $dropboxUser = $this->_dropboxStorageConfig->getDropboxUser();
+        $accessToken = $dropboxUser->getAccessToken();
+
+        $path = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
+        $key = $this->_dropboxStorageConfig->getDropboxKey();
+        $secret = $this->_dropboxStorageConfig->getDropboxSecret();
+
+        return new dbx\Client($accessToken, "PHP-Example/1.0");
     }
 
     /**
-     * Send a mail using this transport
-     * @param \Magento\Framework\Mail\MessageInterface $message
+     * Save file to spool path to avoid exceptions on external storeage provider connection
+     *
+     * @param \Shockwavemk\Mail\Base\Model\Mail\Message $message
      * @param int $id
+     * @return $this
      * @throws \Exception
      */
     public function saveMessage($message, $id)
     {
-        // first save file to spool path
-        // to avoid exceptions on external storeage provider connection
-
         // convert message to html
-
-        /** @var \Shockwavemk\Mail\Base\Model\Mail\Message $message */
         $messageHtml = quoted_printable_decode($message->getBodyHtml(true));
-        $filePath = $this->getFilePath($id);
-
-
         // try to store message to filesystem
-        $this->storeFile($messageHtml, $filePath);
+        $this->storeFile(
+            $messageHtml,
+            $this->getFilePath($id, self::MESSAGE_HTML_FILE_NAME)
+        );
+
+        // convert message to json
+        $messageJson = json_encode($message);
+        // try to store message to filesystem
+        $this->storeFile(
+            $messageJson,
+            $this->getFilePath($id, self::MESSAGE_FILE_NAME)
+        );
+
+        return $this;
     }
 
     /**
-     * Send a mail using this transport
+     * Restore a message from filesystem
      *
-     * @return \Magento\Framework\Mail\MessageInterface
+     * @return \Shockwavemk\Mail\Base\Model\Mail\Message $message
      * @throws \Magento\Framework\Exception\MailException
      */
     public function loadMessage($id)
     {
-        $filePath = $this->getFilePath($id);
-        return $this->restoreFile($filePath);
+        $filePath = $this->getFilePath($id, self::MESSAGE_FILE_NAME);
+        $messageJson = $this->restoreFile($filePath);
+        $messageData = json_decode($messageJson);
+
+        /** @var \Shockwavemk\Mail\Base\Model\Mail\Message $message */
+        $message = $this->_manager->create('Shockwavemk\Mail\Base\Model\Mail\Message');
+
+        if(!empty($messageData->type)) {
+            $message->setType($messageData->type);
+        }
+
+        if(!empty($messageData->txt)) {
+            $message->setBodyText($messageData->txt);
+        }
+
+        if(!empty($messageData->html)) {
+            $message->setBodyHtml($messageData->html);
+        }
+
+        if(!empty($messageData->from)) {
+            $message->setFrom($messageData->from);
+        }
+
+        if(!empty($messageData->subject)) {
+            $message->setSubject($messageData->subject);
+        }
+
+        foreach($messageData->recipients as $recipient)
+        {
+            $message->addTo($recipient);
+        }
+
+
+        return $message;
     }
 
     /**
@@ -102,6 +158,12 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     public function getAttachments($id)
     {
         // TODO: Implement getAttachments() method.
+
+        // ask dropbox how many files should be available
+
+        // look into
+        $accountInfo = $this->getDropboxClient()->getAccountInfo();
+        print_r($accountInfo);
     }
 
     /**
@@ -110,7 +172,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
      * @param $id
      * @return string
      */
-    public function loadAttachment($id)
+    public function loadAttachment($id, $path)
     {
         $binaryString = "TODO_FILE_CONTENT"; // TODO
 
@@ -224,15 +286,15 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
 
     /**
      * @param $id
+     * @param $fileName
      * @return string
      */
-    public function getFilePath($id)
+    public function getFilePath($id, $fileName)
     {
         // store message in temporary file system spooler
         $dropboxHostTempFolderPath = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
 
         $folderPath = $dropboxHostTempFolderPath . $id;
-        $fileName = self::MESSAGE_FILE_NAME;
         $filePath = $folderPath . DIRECTORY_SEPARATOR . $fileName;
 
         // create a folder for message if needed
