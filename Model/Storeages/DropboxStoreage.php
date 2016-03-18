@@ -6,6 +6,13 @@
 namespace Shockwavedesign\Mail\Dropbox\Model\Storeages;
 
 use \Dropbox as dbx;
+use FilesystemIterator;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use RecursiveRegexIterator;
+use RegexIterator;
+use SplFileObject;
+use Symfony\Component\Finder\SplFileInfo;
 
 class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\StoreageInterface
 {
@@ -235,8 +242,34 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
      */
     public function loadAttachments($id)
     {
-        // TODO: Implement loadAttachments() method.
-        return array();
+        // get combined files list: remote and local
+
+        $remoteFolder = $this->getRemoteFolderFileList($id);
+
+        $localFolderFileList = $this->getLocalFolderFileList($id);
+
+
+        $mergedFolerFileList = array_merge($localFolderFileList, $remoteFolder);
+
+        $attachments = [];
+        foreach($mergedFolerFileList as $fileName => $fileMetaData)
+        {
+            /** @var \Shockwavemk\Mail\Base\Model\Mail\Attachment $attachment */
+            $attachment = $this->_manager->create('\Shockwavemk\Mail\Base\Model\Mail\Attachment');
+            $attachment->setDocumentUrl('http://www.google.de');
+            $attachment->setDocumentFileName($fileName);
+
+            // transfer all meta data into attachment object
+            foreach($fileMetaData as $attributeKey => $attributeValue)
+            {
+                $attachment->setData($attributeKey, $attributeValue);
+            }
+
+            $attachments[] = $attachment;
+        }
+
+
+        return $attachments;
     }
 
     /**
@@ -303,5 +336,72 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
             return $filePath;
         }
         return $filePath;
+    }
+
+    /**
+     * @param $id
+     * @return array|null
+     */
+    private function getRemoteFolderFileList($id)
+    {
+        $attachmentFolder = DIRECTORY_SEPARATOR . $id . DIRECTORY_SEPARATOR . self::ATTACHMENT_PATH;
+        $remoteFolder = $this->getDropboxClient()->getMetadataWithChildren($attachmentFolder);
+
+        if(!empty($contents = $remoteFolder['contents']) && is_array($contents)) {
+
+            $files = [];
+
+            foreach($contents as $content) {
+
+                if( is_bool($isDir = $content['is_dir'])
+                    && $isDir === false
+                    && !empty($path = $content['path'])
+                ) {
+
+                    $filePath = str_replace($attachmentFolder, '', $content['path']);
+                    $files[$filePath] = $content;
+
+                }
+
+            }
+
+            return $files;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param $id
+     * @return array
+     */
+    private function getLocalFolderFileList($id)
+    {
+        $spoolFolder = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath() . $id . DIRECTORY_SEPARATOR . self::ATTACHMENT_PATH;
+
+        $objects = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($spoolFolder), RecursiveIteratorIterator::LEAVES_ONLY, FilesystemIterator::SKIP_DOTS);
+
+        $files = [];
+
+        /**
+         * @var string $name
+         * @var SplFileObject $object
+         */
+        foreach($objects as $path => $object) {
+            if($object->getFilename() != '.' && $object->getFilename() != '..')
+            {
+                $filePath = str_replace($spoolFolder, '', $path);
+                $file = [
+                    'name' => $object->getFilename(),
+                    'path' => $path
+                ];
+                $files[$filePath] = $file;
+            }
+        }
+
+        // strip known folder
+
+
+        return $files;
     }
 }
