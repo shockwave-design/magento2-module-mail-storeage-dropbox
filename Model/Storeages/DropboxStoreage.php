@@ -222,6 +222,8 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
 
         // try to store message to filesystem
         $this->storeFile($mailJson, $filePath);
+
+        return $this;
     }
 
     /**
@@ -256,8 +258,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         {
             /** @var \Shockwavemk\Mail\Base\Model\Mail\Attachment $attachment */
             $attachment = $this->_manager->create('\Shockwavemk\Mail\Base\Model\Mail\Attachment');
-            $attachment->setDocumentUrl('http://www.google.de');
-            $attachment->setDocumentFileName($fileName);
+            $attachment->setFileName($fileName);
 
             // transfer all meta data into attachment object
             foreach($fileMetaData as $attributeKey => $attributeValue)
