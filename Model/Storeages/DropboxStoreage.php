@@ -148,58 +148,12 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     /**
      * TODO
      *
-     * @param $id
-     * @param $filePath
-     * @return \Shockwavemk\Mail\Base\Model\Storeages\StoreageInterface
-     */
-    public function addAttachment($id, $filePath)
-    {
-        // TODO: Implement addAttachment() method.
-    }
-
-    /**
-     * TODO
-     *
-     * @return array
-     */
-    public function getAttachments($id)
-    {
-        // TODO: Implement getAttachments() method.
-
-        // ask dropbox how many files should be available
-
-        // look into
-        $accountInfo = $this->getDropboxClient()->getAccountInfo();
-        print_r($accountInfo);
-    }
-
-    /**
-     * Load binary data from storeage provider
-     *
-     * @param $id
-     * @return string
-     */
-    public function loadAttachment($id, $path)
-    {
-        $binaryString = "TODO_FILE_CONTENT"; // TODO
-
-
-        $f = fopen("working-draft.txt", "w+b");
-        $fileMetadata = $dbxClient->getFile("/working-draft.txt", $f);
-        fclose($f);
-        print_r($fileMetadata);
-
-        return $binaryString;
-    }
-
-    /**
-     * TODO
-     *
      * @param \Shockwavemk\Mail\Base\Model\Mail $mail
      * @param int $id
-     * @return  $id
+     * @return $this
+     * @throws \Exception
      */
-    public function saveMail($mail, $id)
+    public function saveMail($mail)
     {
         // first save file to spool path
         // to avoid exceptions on external storeage provider connection
@@ -210,7 +164,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         // store message in temporary file system spooler
         $dropboxHostTempFolderPath = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
 
-        $folderPath = $dropboxHostTempFolderPath . DIRECTORY_SEPARATOR . $id;
+        $folderPath = $dropboxHostTempFolderPath . DIRECTORY_SEPARATOR . $mail->getId();
         $fileName = self::MAIL_FILE_NAME;
         $filePath = $folderPath . DIRECTORY_SEPARATOR . $fileName;
 
@@ -240,16 +194,46 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     /**
      * TODO
      *
+     * @param $id
+     * @param $filePath
+     * @return \Shockwavemk\Mail\Base\Model\Storeages\StoreageInterface
+     */
+    public function addAttachment($id, $filePath)
+    {
+        // TODO: Implement addAttachment() method.
+    }
+
+    /**
+     * Load binary data from storeage provider
+     *
+     * @param $id
+     * @return string
+     */
+    public function loadAttachment($id, $path)
+    {
+        $binaryString = "TODO_FILE_CONTENT"; // TODO
+
+
+        $f = fopen("working-draft.txt", "w+b");
+        $fileMetadata = $dbxClient->getFile("/working-draft.txt", $f);
+        fclose($f);
+        print_r($fileMetadata);
+
+        return $binaryString;
+    }
+
+    /**
+     * TODO
+     *
      * @return array
      */
-    public function loadAttachments($id)
+    public function getAttachments($id)
     {
         // get combined files list: remote and local
 
         $remoteFolder = $this->getRemoteFolderFileList($id);
 
         $localFolderFileList = $this->getLocalFolderFileList($id);
-
 
         $mergedFolerFileList = array_merge($localFolderFileList, $remoteFolder);
 
@@ -259,6 +243,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
             /** @var \Shockwavemk\Mail\Base\Model\Mail\Attachment $attachment */
             $attachment = $this->_manager->create('\Shockwavemk\Mail\Base\Model\Mail\Attachment');
             $attachment->setFileName($fileName);
+            $attachment->setMailId($id);
 
             // transfer all meta data into attachment object
             foreach($fileMetaData as $attributeKey => $attributeValue)
@@ -266,9 +251,8 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
                 $attachment->setData($attributeKey, $attributeValue);
             }
 
-            $attachments[] = $attachment;
+            $attachments[$fileName] = $attachment;
         }
-
 
         return $attachments;
     }
@@ -404,5 +388,15 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
 
 
         return $files;
+    }
+
+    /**
+     * TODO
+     *
+     * @return $id
+     */
+    public function saveAttachment($attachment, $id)
+    {
+        // TODO: Implement saveAttachment() method.
     }
 }
