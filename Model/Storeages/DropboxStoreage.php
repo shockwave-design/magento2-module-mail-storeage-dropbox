@@ -497,4 +497,12 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
 
         return $files;
     }
+
+    /**
+     * @return string
+     */
+    public function getTempFilePath()
+    {
+        return $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
+    }
 }
