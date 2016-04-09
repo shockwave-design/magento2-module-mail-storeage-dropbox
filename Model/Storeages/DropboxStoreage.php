@@ -217,34 +217,19 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
      */
     public function loadAttachment($mail, $path)
     {
-        $dropboxHostTempFolderPath = $this->_dropboxStorageConfig
-            ->getDropboxHostTempFolderPath();
-
-        $folderPath = $dropboxHostTempFolderPath .
-            $mail->getId() .
-            DIRECTORY_SEPARATOR .
-            self::ATTACHMENT_PATH;
-
-        $filePath = $folderPath . $path;
-
-        $attachmentFolder =
-            DIRECTORY_SEPARATOR .
-            $mail->getId() .
-            DIRECTORY_SEPARATOR .
-            self::ATTACHMENT_PATH;
+        $localFilePath = $this->getMailLocalFilePath($mail, $path);
+        $remoteFilePath = $this->getMailRemoteFilePath($mail, $path);
 
         try {
             /** @var string $content */
-            $content = $this->restoreFile($filePath);
+            $content = $this->restoreFile($localFilePath);
 
         } catch(\Exception $e) {
 
-            $handle = fopen($filePath, "w+b");
-            $this->getDropboxClient()->getFile($attachmentFolder . $path, $handle);
-            fclose($handle);
+            $this->restoreRemoteFileToLocalFile($localFilePath, $remoteFilePath);
 
             /** @var string $content */
-            $content = $this->restoreFile($filePath);
+            $content = $this->restoreFile($localFilePath);
         }
 
         return $content;
@@ -537,9 +522,12 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         foreach($objects as $path => $object) {
             if($object->getFilename() != '.' && $object->getFilename() != '..')
             {
+                $shortFilePath = str_replace($spoolFolder, '', $object->getPathName());
+
                 $file = [
                     'name' => $object->getFilename(),
-                    'path' => $object->getPathName(),
+                    'localPath' => $object->getPathName(),
+                    'remotePath' => $shortFilePath,
                     'modified' => $object->getMTime()
                 ];
                 $files[$object->getFilename()] = $file;
@@ -552,5 +540,109 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     public function getCacheLimit()
     {
         return $this->_dropboxStorageConfig->getLocalStoreageLimit();
+    }
+
+    public function getUploadLimit()
+    {
+        return $this->_dropboxStorageConfig->getUploadLimit();
+    }
+
+    /**
+     * @param $mail
+     * @param $path
+     * @return string
+     */
+    protected function getMailLocalFilePath($mail, $path)
+    {
+        $dropboxHostTempFolderPath = $this->_dropboxStorageConfig
+            ->getDropboxHostTempFolderPath();
+
+        $folderPath = $dropboxHostTempFolderPath .
+            $mail->getId() .
+            DIRECTORY_SEPARATOR .
+            self::ATTACHMENT_PATH;
+
+        $filePath = $folderPath . $path;
+        return $filePath;
+    }
+
+    /**
+     * @param $mail
+     * @param $path
+     * @return string
+     */
+    protected function getMailRemoteFilePath($mail, $path)
+    {
+        $attachmentFolder =
+            DIRECTORY_SEPARATOR .
+            $mail->getId() .
+            DIRECTORY_SEPARATOR .
+            self::ATTACHMENT_PATH;
+
+        $remoteFilePath = $attachmentFolder . $path;
+        return $remoteFilePath;
+    }
+
+    /**
+     * @param $localFilePath
+     * @param $remoteFilePath
+     * @return array|null
+     * @throws dbx\Exception_BadResponseCode
+     * @throws dbx\Exception_OverQuota
+     * @throws dbx\Exception_RetryLater
+     * @throws dbx\Exception_ServerError
+     */
+    protected function restoreRemoteFileToLocalFile($localFilePath, $remoteFilePath)
+    {
+        $handle = fopen($localFilePath, "w+b");
+        $result = $this->getDropboxClient()->getFile($remoteFilePath, $handle);
+        fclose($handle);
+
+        return $result;
+    }
+
+    /**
+     * @param $localFilePath
+     * @param $remoteFilePath
+     * @return array|null
+     * @throws dbx\Exception_BadResponseCode
+     * @throws dbx\Exception_OverQuota
+     * @throws dbx\Exception_RetryLater
+     * @throws dbx\Exception_ServerError
+     */
+    public function storeLocalFileToRemoteFile($localFilePath, $remoteFilePath)
+    {
+        $handle = fopen($localFilePath, "rb");
+        $result = $this->getDropboxClient()->uploadFile($remoteFilePath, dbx\WriteMode::force(), $handle);
+        fclose($handle);
+
+        return $result;
+    }
+
+    public function getLocalFileListForPath($localPath)
+    {
+        $files = [];
+        $objects = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($localPath),
+            RecursiveIteratorIterator::LEAVES_ONLY,
+            FilesystemIterator::SKIP_DOTS
+        );
+
+        foreach($objects as $path => $object) {
+            if($object->getFilename() != '.' && $object->getFilename() != '..')
+            {
+                $shortFilePath = str_replace($localPath, '', $object->getPathName());
+
+                $file = [
+                    'name' => $object->getFilename(),
+                    'localPath' => $object->getPathName(),
+                    'remotePath' => $shortFilePath,
+                    'modified' => $object->getMTime()
+                ];
+                $files[$object->getFilename()] = $file;
+            }
+        }
+
+        return $files;
     }
 }

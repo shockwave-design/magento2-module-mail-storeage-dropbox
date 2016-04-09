@@ -51,6 +51,12 @@ class Uploader
         // get config how many should be moved in one step
 
         $cacheLimit = $this->_dropboxStoreage->getCacheLimit();
+        $uploadLimit = $this->_dropboxStoreage->getUploadLimit();
+
+        foreach($folderList as $folder) {
+            //echo $folder;
+            var_dump($this->_dropboxStoreage->getLocalFileListForPath($folder['localPath']));
+        }
 
         // get the config in which folder data should be uploaded
 

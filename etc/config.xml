@@ -13,6 +13,8 @@
             </storeage>
             <smtp>
                 <dropbox_host_temp_folder_path>/var/www/html/var/dropbox</dropbox_host_temp_folder_path>
+                <cachelimit>10</cachelimit>
+                <uploadlimit>2</uploadlimit>
             </smtp>
         </system>
         <transport>
