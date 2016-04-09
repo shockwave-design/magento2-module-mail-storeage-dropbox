@@ -5,8 +5,10 @@
  */
 namespace Shockwavedesign\Mail\Dropbox\Model\Storeages;
 
+use DirectoryIterator;
 use \Dropbox as dbx;
 use FilesystemIterator;
+use IteratorIterator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileObject;
@@ -57,7 +59,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         $this->_manager = $manager;
     }
 
-    protected function getDropboxClient()
+    public function getDropboxClient()
     {
         /** @var \Shockwavedesign\Mail\Dropbox\Model\Dropbox\User $dropboxUser */
         $dropboxUser = $this->_dropboxStorageConfig->getDropboxUser();
@@ -257,18 +259,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     {
         // get combined files list: remote and local
 
-        $remoteFolder = $this->getRemoteFolderFileList(
-            $mail->getId()
-        );
-
-        $localFolderFileList = $this->getLocalFolderFileList(
-            $mail->getId()
-        );
-
-        $mergedFolerFileList = array_merge(
-            $localFolderFileList,
-            $remoteFolder
-        );
+        $mergedFolerFileList = $this->getMergedFolderFileList($mail);
 
         $attachments = [];
         foreach($mergedFolerFileList as $filePath => $fileMetaData)
@@ -421,7 +412,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
      * @param $id
      * @return array|null
      */
-    private function getRemoteFolderFileList($id)
+    private function getMailRemoteFolderFileList($id)
     {
         $attachmentFolder =
             DIRECTORY_SEPARATOR .
@@ -458,7 +449,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
      * @param $id
      * @return array
      */
-    private function getLocalFolderFileList($id)
+    private function getMailLocalFolderFileList($id)
     {
         $spoolFolder = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath() .
             $id .
@@ -504,5 +495,62 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     public function getTempFilePath()
     {
         return $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
+    }
+
+    /**
+     * TODO
+     *
+     * @param \Shockwavemk\Mail\Base\Model\Mail $mail
+     * @return array
+     */
+    protected function getMergedFolderFileList($mail)
+    {
+        $remoteFolder = $this->getMailRemoteFolderFileList(
+            $mail->getId()
+        );
+
+        $localFolderFileList = $this->getMailLocalFolderFileList(
+            $mail->getId()
+        );
+
+        return array_merge(
+            $localFolderFileList,
+            $remoteFolder
+        );
+    }
+
+    public function getRootLocalFolderFileList()
+    {
+        $spoolFolder = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
+
+        $objects = new IteratorIterator(
+            new DirectoryIterator($spoolFolder)
+        );
+
+        /** @var array $files */
+        $files = [];
+
+        /**
+         * @var string $name
+         * @var SplFileObject $object
+         */
+        foreach($objects as $path => $object) {
+            if($object->getFilename() != '.' && $object->getFilename() != '..')
+            {
+                $file = [
+                    'name' => $object->getFilename(),
+                    'path' => $object->getPathName(),
+                    'modified' => $object->getMTime()
+                ];
+                $files[$object->getFilename()] = $file;
+            }
+        }
+
+        return $files;
+    }
+
+    public function getCacheLimit()
+    {
+        return $this->_dropboxStorageConfig->getLocalStoreageLimit();
     }
 }

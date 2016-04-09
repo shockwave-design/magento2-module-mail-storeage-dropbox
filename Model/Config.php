@@ -20,6 +20,8 @@ class Config
 
     const XML_PATH_DROPBOX_HOST_TEMP_FOLDER_PATH = 'system/smtp/dropbox_host_temp_folder_path';
 
+    const XML_PATH_DROPBOX_HOST_CACHE_STOREAGE_LIMIT = 'system/smtp/dropbox_host_cache_storeage_limit';
+
     /**
      * Core store config
      *
@@ -71,5 +73,10 @@ class Config
     public function getDropboxHostTempFolderPath()
     {
         return $this->scopeConfig->getValue(self::XML_PATH_DROPBOX_HOST_TEMP_FOLDER_PATH);
+    }
+
+    public function getLocalStoreageLimit()
+    {
+        return $this->scopeConfig->getValue(self::XML_PATH_DROPBOX_HOST_CACHE_STOREAGE_LIMIT);
     }
 }

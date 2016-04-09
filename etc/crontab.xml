@@ -7,7 +7,7 @@
 -->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
     <group id="default">
-        <job name="upload_email_storeage_data" instance="Shockwavedesign\Mail\Dropbox\Model\Cron\UploadEmailStoreageData"
+        <job name="upload_email_storeage_data" instance="Shockwavedesign\Mail\Dropbox\Model\Cron\Uploader"
              method="invoke">
             <schedule>0 0 * * *</schedule>
         </job>
