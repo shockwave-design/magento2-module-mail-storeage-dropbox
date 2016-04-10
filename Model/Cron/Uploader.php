@@ -37,25 +37,56 @@ class Uploader
      */
     public function invoke()
     {
-        // TODO
-
         // get the list of current temporary stored mail on server
-        $folderList = $this->_dropboxStoreage->getRootLocalFolderFileList();
+        $rootLocalFolderList = $this->_dropboxStoreage->getRootLocalFolderFileList();
 
-        usort($folderList, function($a, $b) {
+        usort($rootLocalFolderList, function($a, $b) {
             return $a['modified'] <=> $b['modified'];
         });
-
-        var_dump($folderList);
 
         // get config how many should be moved in one step
 
         $cacheLimit = $this->_dropboxStoreage->getCacheLimit();
         $uploadLimit = $this->_dropboxStoreage->getUploadLimit();
+        $cronLimit = $this->_dropboxStoreage->getCronLimit();
 
-        foreach($folderList as $folder) {
-            //echo $folder;
-            var_dump($this->_dropboxStoreage->getLocalFileListForPath($folder['localPath']));
+        $localFolderListSize = count($rootLocalFolderList);
+        $uploadRequestCount = 0;
+
+        foreach($rootLocalFolderList as $index => $folder) {
+
+            $localFiles = $this->_dropboxStoreage->getLocalFileListForPath(
+                $folder['localPath']
+            );
+
+            $isFolderStored = true;
+
+            foreach($localFiles as $localFile) {
+                $metaData = $this->_dropboxStoreage->getDropboxClient()->getMetadata(
+                    $localFile['remotePath']
+                );
+
+                if(is_null($metaData)) {
+                    $isFolderStored = false;
+
+                    if($uploadRequestCount < $uploadLimit) {
+
+                        $uploadRequestCount++;
+                        $uploadResult = $this->_dropboxStoreage->storeLocalFileToRemoteFile(
+                            $localFile['localPath'],
+                            $localFile['remotePath']
+                        );
+                    }
+                }
+            }
+
+            // delete local file if index < size - cachelimit
+            $canBeDeleted = $index < ($localFolderListSize - $cacheLimit) && $isFolderStored;
+            if($canBeDeleted === true) {
+                $this->_dropboxStoreage->deleteLocalFiles(
+                    $folder['localPath']
+                );
+            }
         }
 
         // get the config in which folder data should be uploaded

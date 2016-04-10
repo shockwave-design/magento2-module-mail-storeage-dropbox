@@ -39,6 +39,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     protected $_retryLimit;
 
     protected $_manager;
+    protected $_dropboxHostTempFolderPath;
 
     /**
      * @param \Shockwavemk\Mail\Base\Model\Config $config
@@ -57,15 +58,18 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         $this->_retryLimit = 10; // TODO
         $this->_dropboxStorageConfig = $dropboxStoreageConfig;
         $this->_manager = $manager;
+        $this->_dropboxHostTempFolderPath = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
     }
 
+    /**
+     * @return dbx\Client
+     */
     public function getDropboxClient()
     {
         /** @var \Shockwavedesign\Mail\Dropbox\Model\Dropbox\User $dropboxUser */
         $dropboxUser = $this->_dropboxStorageConfig->getDropboxUser();
         $accessToken = $dropboxUser->getAccessToken();
 
-        $path = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
         $key = $this->_dropboxStorageConfig->getDropboxKey();
         $secret = $this->_dropboxStorageConfig->getDropboxSecret();
 
@@ -524,13 +528,12 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
             {
                 $shortFilePath = str_replace($spoolFolder, '', $object->getPathName());
 
-                $file = [
+                $files[] = [
                     'name' => $object->getFilename(),
                     'localPath' => $object->getPathName(),
                     'remotePath' => $shortFilePath,
                     'modified' => $object->getMTime()
                 ];
-                $files[$object->getFilename()] = $file;
             }
         }
 
@@ -631,12 +634,12 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         foreach($objects as $path => $object) {
             if($object->getFilename() != '.' && $object->getFilename() != '..')
             {
-                $shortFilePath = str_replace($localPath, '', $object->getPathName());
+                $remoteFilePath = str_replace($this->_dropboxHostTempFolderPath, '/', $object->getPathName());
 
                 $file = [
                     'name' => $object->getFilename(),
                     'localPath' => $object->getPathName(),
-                    'remotePath' => $shortFilePath,
+                    'remotePath' => $remoteFilePath,
                     'modified' => $object->getMTime()
                 ];
                 $files[$object->getFilename()] = $file;
@@ -644,5 +647,32 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         }
 
         return $files;
+    }
+
+    public function deleteLocalFiles($localPath)
+    {
+        $it = new RecursiveDirectoryIterator(
+            $localPath,
+            RecursiveDirectoryIterator::SKIP_DOTS
+        );
+
+        $files = new RecursiveIteratorIterator(
+            $it,
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach($files as $file) {
+            if ($file->isDir()){
+                rmdir($file->getRealPath());
+            } else {
+                unlink($file->getRealPath());
+            }
+        }
+        rmdir($localPath);
+    }
+
+    public function getCronLimit()
+    {
+        return $this->_dropboxStorageConfig->getCronLimit();
     }
 }

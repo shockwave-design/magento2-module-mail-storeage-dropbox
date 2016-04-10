@@ -24,6 +24,8 @@ class Config
 
     const XML_PATH_DROPBOX_UPLOAD_LIMIT_PER_RUN = 'system/smtp/uploadlimit';
 
+    const XML_PATH_DROPBOX_CRON_LIMIT_PER_RUN = 'system/smtp/cronlimit';
+
     /**
      * Core store config
      *
@@ -85,5 +87,10 @@ class Config
     public function getUploadLimit()
     {
         return $this->scopeConfig->getValue(self::XML_PATH_DROPBOX_UPLOAD_LIMIT_PER_RUN);
+    }
+
+    public function getCronLimit()
+    {
+        return $this->scopeConfig->getValue(self::XML_PATH_DROPBOX_CRON_LIMIT_PER_RUN);
     }
 }

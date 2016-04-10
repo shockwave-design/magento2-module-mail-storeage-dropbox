@@ -41,6 +41,30 @@
                         <field id="storeage">dropbox</field>
                     </depends>
                 </field>
+
+                <field id="uploadlimit" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Dropbox Upload Request Limit</label>
+                    <comment><![CDATA[10]]></comment>
+                    <depends>
+                        <field id="storeage">dropbox</field>
+                    </depends>
+                </field>
+
+                <field id="cachelimit" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Dropbox Cache Limit</label>
+                    <comment><![CDATA[2]]></comment>
+                    <depends>
+                        <field id="storeage">dropbox</field>
+                    </depends>
+                </field>
+
+                <field id="cronlimit" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Dropbox Upload Cron Limit</label>
+                    <comment><![CDATA[2]]></comment>
+                    <depends>
+                        <field id="storeage">dropbox</field>
+                    </depends>
+                </field>
             </group>
         </section>
     </system>
