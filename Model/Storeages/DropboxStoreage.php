@@ -107,13 +107,23 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     /**
      * Restore a message from filesystem
      *
+     * @param \Shockwavemk\Mail\Base\Model\Mail $mail
      * @return \Shockwavemk\Mail\Base\Model\Mail\Message $message
-     * @throws \Magento\Framework\Exception\MailException
+     * @throws \Exception
+     * @throws \Zend_Mail_Exception
      */
-    public function loadMessage($id)
+    public function loadMessage($mail)
     {
-        $filePath = $this->getFilePath($id, self::MESSAGE_FILE_NAME);
-        $messageJson = $this->restoreFile($filePath);
+        $localFilePath = $this->getMailLocalFilePath($mail, DIRECTORY_SEPARATOR . self::MESSAGE_FILE_NAME);
+        $remoteFilePath = $this->getMailRemoteFilePath($mail, DIRECTORY_SEPARATOR . self::MESSAGE_FILE_NAME);
+
+        $messageJson = $this->restoreFile($localFilePath);
+
+        if(empty($messageJson)) {
+            $this->restoreRemoteFileToLocalFile($localFilePath, $remoteFilePath);
+            $messageJson = $this->restoreFile($localFilePath);
+        }
+
         $messageData = json_decode($messageJson);
 
         /** @var \Shockwavemk\Mail\Base\Model\Mail\Message $message */
@@ -221,18 +231,14 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
      */
     public function loadAttachment($mail, $path)
     {
-        $localFilePath = $this->getMailLocalFilePath($mail, $path);
-        $remoteFilePath = $this->getMailRemoteFilePath($mail, $path);
+        $attachmentFolder = DIRECTORY_SEPARATOR . self::ATTACHMENT_PATH;
 
-        try {
-            /** @var string $content */
-            $content = $this->restoreFile($localFilePath);
+        $localFilePath = $this->getMailLocalFilePath($mail, $attachmentFolder . $path);
+        $remoteFilePath = $this->getMailRemoteFilePath($mail, $attachmentFolder . $path);
 
-        } catch(\Exception $e) {
-
+        $content = $this->restoreFile($localFilePath);
+        if(empty($content)) {
             $this->restoreRemoteFileToLocalFile($localFilePath, $remoteFilePath);
-
-            /** @var string $content */
             $content = $this->restoreFile($localFilePath);
         }
 
@@ -333,6 +339,12 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
 
     private function storeFile($data, $filePath)
     {
+        // create a folder for message if needed
+        if(!is_dir(dirname($filePath)))
+        {
+            $this->createFolder(dirname($filePath));
+        }
+
         for ($i = 0; $i < $this->_retryLimit; ++$i) {
             /* We try an exclusive creation of the file. This is an atomic operation, it avoid locking mechanism */
             $fp = @fopen($filePath, 'x');
@@ -561,9 +573,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
             ->getDropboxHostTempFolderPath();
 
         $folderPath = $dropboxHostTempFolderPath .
-            $mail->getId() .
-            DIRECTORY_SEPARATOR .
-            self::ATTACHMENT_PATH;
+            $mail->getId();
 
         $filePath = $folderPath . $path;
         return $filePath;
@@ -578,9 +588,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     {
         $attachmentFolder =
             DIRECTORY_SEPARATOR .
-            $mail->getId() .
-            DIRECTORY_SEPARATOR .
-            self::ATTACHMENT_PATH;
+            $mail->getId();
 
         $remoteFilePath = $attachmentFolder . $path;
         return $remoteFilePath;
@@ -597,6 +605,12 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
      */
     protected function restoreRemoteFileToLocalFile($localFilePath, $remoteFilePath)
     {
+        // create a folder for message if needed
+        if(!is_dir(dirname($localFilePath)))
+        {
+            $this->createFolder(dirname($localFilePath));
+        }
+
         $handle = fopen($localFilePath, "w+b");
         $result = $this->getDropboxClient()->getFile($remoteFilePath, $handle);
         fclose($handle);

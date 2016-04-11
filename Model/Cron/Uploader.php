@@ -55,6 +55,10 @@ class Uploader
 
         foreach($rootLocalFolderList as $index => $folder) {
 
+            if($index > $cronLimit + $cacheLimit) {
+                break;
+            }
+
             $localFiles = $this->_dropboxStoreage->getLocalFileListForPath(
                 $folder['localPath']
             );
