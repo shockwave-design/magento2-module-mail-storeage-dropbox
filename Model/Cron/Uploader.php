@@ -17,6 +17,9 @@ class Uploader
 
     protected $_manager;
 
+    /** @var bool */
+    protected $_debugMode;
+
     /**
      * TODO
      * @param DropboxStoreage $dropboxStoreage
@@ -28,6 +31,7 @@ class Uploader
     ) {
         $this->_manager = $manager;
         $this->_dropboxStoreage = $dropboxStoreage;
+        $this->_debugMode = true;
     }
 
     /**
@@ -55,7 +59,15 @@ class Uploader
 
         foreach($rootLocalFolderList as $index => $folder) {
 
+            if($this->_debugMode) {
+                echo 'Process folder [' . $folder['localPath'] . ']' . "\n";
+            }
+
             if($index > $cronLimit + $cacheLimit) {
+                if($this->_debugMode) {
+                    echo 'Limit reached "' . ($cronLimit + $cacheLimit) . '""' . "\n";
+                }
+
                 break;
             }
 
@@ -71,6 +83,10 @@ class Uploader
                 );
 
                 if(is_null($metaData)) {
+                    if($this->_debugMode) {
+                        echo 'No metaData for file [' . $localFile['remotePath'] . '] / [' . $localFile['remotePath'] . ']' . "\n";
+                    }
+
                     $isFolderStored = false;
 
                     if($uploadRequestCount < $uploadLimit) {
@@ -87,6 +103,10 @@ class Uploader
             // delete local file if index < size - cachelimit
             $canBeDeleted = $index < ($localFolderListSize - $cacheLimit) && $isFolderStored;
             if($canBeDeleted === true) {
+                if($this->_debugMode) {
+                    echo 'Delete local files recursive [' . $folder['localPath'] . ']' . "\n";
+                }
+
                 $this->_dropboxStoreage->deleteLocalFiles(
                     $folder['localPath']
                 );
