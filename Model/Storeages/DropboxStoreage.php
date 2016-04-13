@@ -97,7 +97,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         // try to store message to filesystem
         $this->storeFile(
             $messageHtml,
-            $this->getMailLocalFilePath($mail, self::MESSAGE_HTML_FILE_NAME)
+            $this->getMailLocalFilePath($mail, DIRECTORY_SEPARATOR . self::MESSAGE_HTML_FILE_NAME)
         );
 
         // convert message to json
@@ -105,7 +105,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         // try to store message to filesystem
         $this->storeFile(
             $messageJson,
-            $this->getMailLocalFilePath($mail, self::MESSAGE_FILE_NAME)
+            $this->getMailLocalFilePath($mail, DIRECTORY_SEPARATOR . self::MESSAGE_FILE_NAME)
         );
 
         return $this;
@@ -132,10 +132,6 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         }
 
         $messageData = json_decode($messageJson);
-
-        if(empty($messageData)) {
-            return null;
-        }
 
         /** @var \Shockwavemk\Mail\Base\Model\Mail\Message $message */
         $message = $this->_manager->create('Shockwavemk\Mail\Base\Model\Mail\Message');
@@ -192,7 +188,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         // try to store message to filesystem
         return $this->storeFile(
             $mailJson,
-            $this->getMailLocalFilePath($mail, self::MAIL_FILE_NAME)
+            $this->getMailLocalFilePath($mail, DIRECTORY_SEPARATOR . self::MAIL_FILE_NAME)
         );
     }
 
