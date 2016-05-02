@@ -21,61 +21,37 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     const MAIL_FILE_NAME = 'mail.json';
     const ATTACHMENT_PATH = 'attachments';
 
-    /**
-     * @var \Shockwavemk\Mail\Base\Model\Storeages\StoreageInterface
-     */
+    /** @var \Shockwavemk\Mail\Base\Model\Storeages\StoreageInterface */
     protected $_storage;
 
-    /**
-     * @var \Shockwavemk\Mail\Base\Model\Config $_config
-     */
+    /** @var \Shockwavemk\Mail\Base\Model\Config $_config */
     protected $_config;
 
-    /**
-     * @var \Shockwavedesign\Mail\Dropbox\Model\Config $_dropboxStorageConfig
-     */
-    protected $_dropboxStorageConfig;
+    /** @var \Shockwavedesign\Mail\Dropbox\Model\Config $_dropboxStorageConfig */
+    protected $_dropboxConfig;
 
-    protected $_retryLimit;
-
-    protected $_manager;
-    protected $_dropboxHostTempFolderPath;
+    /** @var \Magento\Framework\ObjectManagerInterface */
+    protected $_objectManager;
 
     /**
+     * DropboxStoreage constructor.
+     * 
      * @param \Shockwavemk\Mail\Base\Model\Config $config
-     * @param \Magento\Framework\ObjectManagerInterface $manager
-     * @throws \Magento\Framework\Exception\MailException
-     * @internal param null $parameters
+     * @param \Magento\Framework\Mail\MessageInterface $message
+     * @param \Magento\Framework\ObjectManagerInterface $objectManager
+     * @param \Shockwavedesign\Mail\Dropbox\Model\Config $dropboxConfig
      */
     public function __construct(
         \Shockwavemk\Mail\Base\Model\Config $config,
-        \Shockwavedesign\Mail\Dropbox\Model\Config $dropboxStoreageConfig,
         \Magento\Framework\Mail\MessageInterface $message,
-        \Magento\Framework\ObjectManagerInterface $manager
+        \Magento\Framework\ObjectManagerInterface $objectManager,
+        \Shockwavedesign\Mail\Dropbox\Model\Config $dropboxConfig
     )
     {
         $this->_config = $config;
-        $this->_retryLimit = 10; // TODO
-        $this->_dropboxStorageConfig = $dropboxStoreageConfig;
-        $this->_manager = $manager;
-        $this->_dropboxHostTempFolderPath = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
-    }
+        $this->_objectManager = $objectManager;
 
-    /**
-     *
-     *
-     * @return dbx\Client
-     */
-    public function getDropboxClient()
-    {
-        /** @var \Shockwavedesign\Mail\Dropbox\Model\Dropbox\User $dropboxUser */
-        $dropboxUser = $this->_dropboxStorageConfig->getDropboxUser();
-        $accessToken = $dropboxUser->getAccessToken();
-
-        $key = $this->_dropboxStorageConfig->getDropboxKey();
-        $secret = $this->_dropboxStorageConfig->getDropboxSecret();
-
-        return new dbx\Client($accessToken, "PHP-Example/1.0");
+        $this->_dropboxConfig = $dropboxConfig;
     }
 
     /**
@@ -93,7 +69,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         $this->prepareFolderPath(
             $this->getMailFolderPath($mail)
         );
-        
+
         // try to store message to filesystem
         $this->storeFile(
             $messageHtml,
@@ -109,6 +85,83 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         );
 
         return $this;
+    }
+
+    protected function prepareFolderPath($folderPath)
+    {
+        // create a folder for message if needed
+        if (!is_dir($folderPath)) {
+            $this->createFolder($folderPath);
+        }
+    }
+
+    private function createFolder($folderPath)
+    {
+        return mkdir(
+            $folderPath,
+            0777,
+            true
+        );
+    }
+
+    /**
+     * @param \Shockwavemk\Mail\Base\Model\Mail $mail
+     * @return string
+     */
+    protected function getMailFolderPath($mail)
+    {
+        // store message in temporary file system spooler
+        $hostTempFolderPath = $this->_config->getHostTempFolderPath();
+
+        $folderPath = $hostTempFolderPath . $mail->getId();
+        return $folderPath;
+    }
+
+    /**
+     * TODO
+     *
+     * @param $data
+     * @param $filePath
+     * @return bool
+     * @throws \Exception
+     */
+    protected function storeFile($data, $filePath)
+    {
+        // create a folder for message if needed
+        if(!is_dir(dirname($filePath)))
+        {
+            $this->createFolder(dirname($filePath));
+        }
+
+        for ($i = 0; $i < $this->_config->getHostRetryLimit(); ++$i) {
+            /* We try an exclusive creation of the file. This is an atomic operation, it avoid locking mechanism */
+            $fp = @fopen($filePath, 'x');
+
+            if (false === fwrite($fp, $data)) {
+                return false;
+            }
+            fclose($fp);
+
+            return $filePath;
+        }
+
+        throw new \Exception('Unable to create a file for enqueuing Message');
+    }
+
+    /**
+     * @param \Shockwavemk\Mail\Base\Model\Mail $mail
+     * @param $path
+     * @return string
+     */
+    protected function getMailLocalFilePath($mail, $path)
+    {
+        $hostTempFolderPath = $this->_config->getHostTempFolderPath();
+
+        $folderPath = $dropboxHostTempFolderPath .
+            $mail->getId();
+
+        $filePath = $folderPath . $path;
+        return $filePath;
     }
 
     /**
@@ -167,6 +220,87 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     }
 
     /**
+     * @param \Shockwavemk\Mail\Base\Model\Mail $mail
+     * @param $path
+     * @return string
+     */
+    protected function getMailRemoteFilePath($mail, $path)
+    {
+        $attachmentFolder =
+            DIRECTORY_SEPARATOR .
+            $mail->getId();
+
+        $remoteFilePath = $attachmentFolder . $path;
+        return $remoteFilePath;
+    }
+
+    /**
+     * Load binary file data from a given file path
+     *
+     * @param $filePath
+     * @return null|string
+     */
+    private function restoreFile($filePath)
+    {
+        try {
+            for ($i = 0; $i < $this->_config->getHostRetryLimit(); ++$i) {
+                /* We try an exclusive creation of the file. This is an atomic operation, it avoid locking mechanism */
+                @fopen($filePath, 'x');
+
+                if (false === $fileData = file_get_contents ($filePath)) {
+                    return null;
+                }
+                return $fileData;
+            }
+        } catch(\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * TODO
+     *
+     * @param $localFilePath
+     * @param $remoteFilePath
+     * @return array|null
+     * @throws dbx\Exception_BadResponseCode
+     * @throws dbx\Exception_OverQuota
+     * @throws dbx\Exception_RetryLater
+     * @throws dbx\Exception_ServerError
+     */
+    protected function restoreRemoteFileToLocalFile($localFilePath, $remoteFilePath)
+    {
+        // create a folder for message if needed
+        if(!is_dir(dirname($localFilePath)))
+        {
+            $this->createFolder(dirname($localFilePath));
+        }
+
+        $handle = fopen($localFilePath, "w+b");
+        $result = $this->getDropboxClient()->getFile($remoteFilePath, $handle);
+        fclose($handle);
+
+        return $result;
+    }
+
+    /**
+     * TODO
+     *
+     * @return dbx\Client
+     */
+    public function getDropboxClient()
+    {
+        /** @var \Shockwavedesign\Mail\Dropbox\Model\Dropbox\User $dropboxUser */
+        $dropboxUser = $this->_dropboxConfig->getDropboxUser();
+        $accessToken = $dropboxUser->getAccessToken();
+
+        $key = $this->_dropboxConfig->getDropboxKey();
+        $secret = $this->_dropboxConfig->getDropboxSecret();
+
+        return new dbx\Client($accessToken, "PHP-Example/1.0");
+    }
+
+    /**
      * TODO
      *
      * @param \Shockwavemk\Mail\Base\Model\Mail $mail
@@ -202,7 +336,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     {
         // TODO: Implement loadMail() method.
     }
-
+    
     /**
      * TODO
      *
@@ -245,7 +379,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
 
     /**
      * Returns attachments for a given mail
-     * 
+     *
      * \Shockwavemk\Mail\Base\Model\Mail $mail
      *
      * @return \Shockwavemk\Mail\Base\Model\Mail\Attachment[]
@@ -280,147 +414,31 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     }
 
     /**
-     * Save an attachment binary to a file in host temp folder
-     *
-     * @param \Shockwavemk\Mail\Base\Model\Mail\Attachment $attachment
-     * @return int $id
-     */
-    public function saveAttachment($attachment)
-    {
-        $binaryData = $attachment->getBinary();
-        $mail = $attachment->getMail();
-
-        $folderPath = $this->getMailFolderPath($mail) .
-            DIRECTORY_SEPARATOR .
-            self::ATTACHMENT_PATH;
-
-        // create a folder for message if needed
-        $this->prepareFolderPath($folderPath);
-
-        // try to store message to filesystem
-        return $this->storeFile(
-            $binaryData,
-            $this->getMailLocalFilePath(
-                $mail,
-                DIRECTORY_SEPARATOR .
-                    self::ATTACHMENT_PATH .
-                    $attachment->getFilePath()
-            )
-        );
-    }
-
-    /**
-     * Save all attachments of a given mail
-     *
-     * @param \Shockwavemk\Mail\Base\Model\Mail $mail
-     * @return $this
-     */
-    public function saveAttachments($mail)
-    {
-        /** @var \Shockwavemk\Mail\Base\Model\Mail\Attachment[] $attachments */
-        $attachments = $mail->getAttachments();
-
-        foreach($attachments as $attachment) {
-            $this->saveAttachment($attachment);
-        }
-
-        return $this;
-    }
-
-    /**
      * TODO
-     * 
-     * @param $data
-     * @param $filePath
-     * @return bool
-     * @throws \Exception
+     *
+     * @param \Shockwavemk\Mail\Base\Model\Mail $mail
+     * @return array
      */
-    protected function storeFile($data, $filePath)
+    protected function getMergedFolderFileList($mail)
     {
-        // create a folder for message if needed
-        if(!is_dir(dirname($filePath)))
-        {
-            $this->createFolder(dirname($filePath));
-        }
+        $remoteFolder = $this->getMailRemoteFolderFileList($mail);
+        $localFolderFileList = $this->getMailLocalFolderFileList($mail);
 
-        for ($i = 0; $i < $this->_retryLimit; ++$i) {
-            /* We try an exclusive creation of the file. This is an atomic operation, it avoid locking mechanism */
-            $fp = @fopen($filePath, 'x');
-
-            if (false === fwrite($fp, $data)) {
-                return false;
-            }
-            fclose($fp);
-
-            return $filePath;
-        }
-
-        throw new \Exception('Unable to create a file for enqueuing Message');
-    }
-
-    /**
-     * Load binary file data from a given file path
-     * 
-     * @param $filePath
-     * @return null|string
-     */
-    private function restoreFile($filePath)
-    {
-        try {
-            for ($i = 0; $i < $this->_retryLimit; ++$i) {
-                /* We try an exclusive creation of the file. This is an atomic operation, it avoid locking mechanism */
-                @fopen($filePath, 'x');
-
-                if (false === $fileData = file_get_contents ($filePath)) {
-                    return null;
-                }
-                return $fileData;
-            }
-        } catch(\Exception $e) {
-            return null;
-        }
-    }
-
-    private function createFolder($folderPath)
-    {
-        return mkdir(
-            $folderPath,
-            0777,
-            true
+        return array_merge(
+            $localFolderFileList,
+            $remoteFolder
         );
-    }
-    
-    protected function prepareFolderPath($folderPath)
-    {
-        // create a folder for message if needed
-        if (!is_dir($folderPath)) {
-            $this->createFolder($folderPath);
-        }
     }
 
     /**
      * @param \Shockwavemk\Mail\Base\Model\Mail $mail
-     * @return string
-     */
-    protected function getMailFolderPath($mail)
-    {
-        // store message in temporary file system spooler
-        $dropboxHostTempFolderPath = $this->_dropboxStorageConfig
-            ->getDropboxHostTempFolderPath();
-
-        $folderPath = $dropboxHostTempFolderPath . $mail->getId();
-        return $folderPath;
-    }
-
-    /**
-     * @param $id
      * @return array|null
      */
-    private function getMailRemoteFolderFileList($id)
+    private function getMailRemoteFolderFileList($mail)
     {
         $attachmentFolder =
             DIRECTORY_SEPARATOR .
-            $id .
+            $mail->getId() .
             DIRECTORY_SEPARATOR .
             self::ATTACHMENT_PATH;
 
@@ -450,13 +468,13 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     }
 
     /**
-     * @param $id
+     * @param \Shockwavemk\Mail\Base\Model\Mail $mail
      * @return array
      */
-    private function getMailLocalFolderFileList($id)
+    private function getMailLocalFolderFileList($mail)
     {
-        $spoolFolder = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath() .
-            $id .
+        $spoolFolder = $this->_config->getHostTempFolderPath() .
+            $mail->getId() .
             DIRECTORY_SEPARATOR .
             self::ATTACHMENT_PATH;
 
@@ -494,38 +512,56 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     }
 
     /**
-     * @return string
+     * Save all attachments of a given mail
+     *
+     * @param \Shockwavemk\Mail\Base\Model\Mail $mail
+     * @return $this
      */
-    public function getTempFilePath()
+    public function saveAttachments($mail)
     {
-        return $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
+        /** @var \Shockwavemk\Mail\Base\Model\Mail\Attachment[] $attachments */
+        $attachments = $mail->getAttachments();
+
+        foreach($attachments as $attachment) {
+            $this->saveAttachment($attachment);
+        }
+
+        return $this;
     }
 
     /**
-     * TODO
+     * Save an attachment binary to a file in host temp folder
      *
-     * @param \Shockwavemk\Mail\Base\Model\Mail $mail
-     * @return array
+     * @param \Shockwavemk\Mail\Base\Model\Mail\Attachment $attachment
+     * @return int $id
      */
-    protected function getMergedFolderFileList($mail)
+    public function saveAttachment($attachment)
     {
-        $remoteFolder = $this->getMailRemoteFolderFileList(
-            $mail->getId()
-        );
+        $binaryData = $attachment->getBinary();
+        $mail = $attachment->getMail();
 
-        $localFolderFileList = $this->getMailLocalFolderFileList(
-            $mail->getId()
-        );
+        $folderPath = $this->getMailFolderPath($mail) .
+            DIRECTORY_SEPARATOR .
+            self::ATTACHMENT_PATH;
 
-        return array_merge(
-            $localFolderFileList,
-            $remoteFolder
+        // create a folder for message if needed
+        $this->prepareFolderPath($folderPath);
+
+        // try to store message to filesystem
+        return $this->storeFile(
+            $binaryData,
+            $this->getMailLocalFilePath(
+                $mail,
+                DIRECTORY_SEPARATOR .
+                    self::ATTACHMENT_PATH .
+                    $attachment->getFilePath()
+            )
         );
     }
 
     public function getRootLocalFolderFileList()
     {
-        $spoolFolder = $this->_dropboxStorageConfig->getDropboxHostTempFolderPath();
+        $spoolFolder = $this->_config->getHostTempFolderPath();
 
         $objects = new IteratorIterator(
             new DirectoryIterator($spoolFolder)
@@ -566,62 +602,6 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
     }
 
     /**
-     * @param \Shockwavemk\Mail\Base\Model\Mail $mail
-     * @param $path
-     * @return string
-     */
-    protected function getMailLocalFilePath($mail, $path)
-    {
-        $dropboxHostTempFolderPath = $this->_dropboxStorageConfig
-            ->getDropboxHostTempFolderPath();
-
-        $folderPath = $dropboxHostTempFolderPath .
-            $mail->getId();
-
-        $filePath = $folderPath . $path;
-        return $filePath;
-    }
-
-    /**
-     * @param \Shockwavemk\Mail\Base\Model\Mail $mail
-     * @param $path
-     * @return string
-     */
-    protected function getMailRemoteFilePath($mail, $path)
-    {
-        $attachmentFolder =
-            DIRECTORY_SEPARATOR .
-            $mail->getId();
-
-        $remoteFilePath = $attachmentFolder . $path;
-        return $remoteFilePath;
-    }
-
-    /**
-     * @param $localFilePath
-     * @param $remoteFilePath
-     * @return array|null
-     * @throws dbx\Exception_BadResponseCode
-     * @throws dbx\Exception_OverQuota
-     * @throws dbx\Exception_RetryLater
-     * @throws dbx\Exception_ServerError
-     */
-    protected function restoreRemoteFileToLocalFile($localFilePath, $remoteFilePath)
-    {
-        // create a folder for message if needed
-        if(!is_dir(dirname($localFilePath)))
-        {
-            $this->createFolder(dirname($localFilePath));
-        }
-
-        $handle = fopen($localFilePath, "w+b");
-        $result = $this->getDropboxClient()->getFile($remoteFilePath, $handle);
-        fclose($handle);
-
-        return $result;
-    }
-
-    /**
      * @param $localFilePath
      * @param $remoteFilePath
      * @return array|null
@@ -651,7 +631,8 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         foreach($objects as $path => $object) {
             if($object->getFilename() != '.' && $object->getFilename() != '..')
             {
-                $remoteFilePath = str_replace($this->_dropboxHostTempFolderPath, '/', $object->getPathName());
+                $hostTempFolderPath = $this->_config->getHostTempFolderPath();
+                $remoteFilePath = str_replace($hostTempFolderPath, '/', $object->getPathName());
 
                 $file = [
                     'name' => $object->getFilename(),
@@ -659,6 +640,7 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
                     'remotePath' => $remoteFilePath,
                     'modified' => $object->getMTime()
                 ];
+                
                 $files[$object->getFilename()] = $file;
             }
         }
@@ -666,6 +648,12 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
         return $files;
     }
 
+    /**
+     * TODO
+     *
+     * @param $localPath
+     * @return \Shockwavedesign\Mail\Dropbox\Model\Storeages\DropboxStoreage
+     */
     public function deleteLocalFiles($localPath)
     {
         $it = new RecursiveDirectoryIterator(
@@ -685,11 +673,14 @@ class DropboxStoreage implements \Shockwavemk\Mail\Base\Model\Storeages\Storeage
                 unlink($file->getRealPath());
             }
         }
+
         rmdir($localPath);
+
+        return $this;
     }
 
     public function getCronLimit()
     {
-        return $this->_dropboxStorageConfig->getCronLimit();
+        return $this->_dropboxConfig->getCronLimit();
     }
 }
